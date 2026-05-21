@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Florezco por Ti</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Cinzel:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #120608;
+  font-family: 'Cormorant Garamond', serif;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 90% 55% at 50% 110%, #3d0a1a 0%, transparent 65%),
+    radial-gradient(ellipse 50% 35% at 50% -10%, #200510 0%, transparent 70%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* PARTICLES — reducidas y usando will-change */
+.particles { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
+@keyframes float-up {
+  0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0.85; }
+  100% { transform: translateY(-110vh) translateX(var(--drift)) scale(0.2); opacity: 0; }
+}
+.particle {
+  position: absolute; bottom: -10px;
+  width: var(--sz); height: var(--sz);
+  border-radius: 50%; background: #d4a853;
+  animation: float-up var(--dur) linear infinite;
+  animation-delay: var(--delay); opacity: 0;
+  will-change: transform, opacity;
+}
+
+header {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: clamp(75px, 17vw, 125px);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 8px 16px 6px;
+  z-index: 20;
+  background: linear-gradient(to bottom, rgba(18,6,8,0.78) 65%, transparent);
+}
+header h1 {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(12px, 3.6vw, 46px);
+  font-weight: 600; color: #f5ede4;
+  letter-spacing: clamp(2px, 0.9vw, 6px);
+  text-transform: uppercase; text-align: center;
+  animation: shimmer 4s ease-in-out infinite;
+  line-height: 1.2;
+}
+@keyframes shimmer {
+  0%,100% { text-shadow: 0 0 28px rgba(212,168,83,0.5); }
+  50%      { text-shadow: 0 0 55px rgba(212,168,83,0.9); }
+}
+header p {
+  margin-top: 4px;
+  font-size: clamp(10px, 2.1vw, 17px);
+  font-style: italic; font-weight: 300;
+  color: #e8b4c0; letter-spacing: 0.5px; line-height: 1.5;
+  text-align: center;
+}
+
+canvas {
+  position: fixed; top: 0; left: 0;
+  /* CSS size = logical pixels; actual pixel size set via JS with DPR */
+  width: 100%; height: 100%;
+  z-index: 10; display: block;
+  image-rendering: pixelated; /* crisp on high-DPI */
+}
+
+#foot {
+  position: fixed; bottom: 10px; left: 0; right: 0;
+  z-index: 20; text-align: center;
+  font-family: 'Cinzel', serif;
+  font-size: clamp(8px, 1.4vw, 13px);
+  color: #d4a853; letter-spacing: clamp(2px, 0.9vw, 4px); opacity: 0.55;
+  text-transform: uppercase;
+  background: linear-gradient(to top, rgba(18,6,8,0.6) 60%, transparent);
+  padding-bottom: 4px;
+}
+</style>
+</head>
+<body>
+
+<div class="particles" id="particles"></div>
+<header>
+  <h1>✦ Donde estés tú, florece el amor ✦</h1>
+  <p>Como estas rosas, mi amor florece<br/>entre espinas y perfume — todo sea por ti 🩶</p>
+</header>
+<canvas id="canvas"></canvas>
+<div id="foot">con todo mi amor ✦</div>
+
+<script>
+/* ─── PARTICLES (menos en móvil) ──────────────────────────── */
+(function(){
+  const isMobile = window.innerWidth < 600;
+  const count = isMobile ? 18 : 32;
+  const c = document.getElementById('particles');
+  for(let i = 0; i < count; i++){
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const sz = (Math.random()*2.2+0.7)+'px';
+    p.style.cssText = `--sz:${sz};--dur:${(Math.random()*14+9).toFixed(1)}s;--delay:${(Math.random()*14).toFixed(1)}s;--drift:${(Math.random()*130-65).toFixed(0)}px;left:${Math.random()*100}%;`;
+    c.appendChild(p);
+  }
+})();
+
+/* ─── CANVAS + DPR (nitidez en Retina/OLED) ──────────────── */
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d', { alpha: false }); // alpha:false = más rápido
+
+// Detectar si es móvil para limitar calidad
+const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 600;
+// En móvil usamos DPR real pero máximo 2 para no matar la GPU
+const DPR = Math.min(window.devicePixelRatio || 1, IS_MOBILE ? 2 : 3);
+
+function resize(){
+  const W = window.innerWidth, H = window.innerHeight;
+  canvas.width  = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); // escala automática
+}
+resize();
+window.addEventListener('resize', ()=>{ resize(); build(); });
+
+/* ─── HELPERS ─────────────────────────────────────────────── */
+let t = 0;
+const lerp = (a,b,r) => a+(b-a)*r;
+
+// En móvil reducimos pétalos para ahorrar GPU
+const PETAL_REDUCE = IS_MOBILE ? 0.65 : 1.0;
+
+/* ─── LAYOUT ──────────────────────────────────────────────── */
+function getLayout(){
+  const W = window.innerWidth, H = window.innerHeight;
+  const cx = W / 2;
+  const headerH = document.querySelector('header').offsetHeight || 105;
+  const footH   = 36;
+  const availH  = H - headerH - footH;
+  const wrapTipY  = H - footH - 10;
+  const wrapH     = Math.min(availH * 0.27, 182);
+  const wrapHalfW = Math.min(W * 0.20, 145);
+  const openY     = wrapTipY - wrapH;
+  return { cx, W, H, headerH, availH, wrapTipY, wrapH, wrapHalfW, openY };
+}
+
+/* ─── PETAL (sin shadowBlur — muy caro en móvil) ─────────── */
+function drawPetal(cx,cy,angle,len,w,c1,c2,alpha){
+  ctx.save();
+  ctx.globalAlpha = alpha ?? 1;
+  ctx.translate(cx,cy); ctx.rotate(angle);
+  const g = ctx.createLinearGradient(0,0,0,-len);
+  g.addColorStop(0,   c2+'cc');
+  g.addColorStop(0.4, c1);
+  g.addColorStop(0.8, c1+'bb');
+  g.addColorStop(1,   c2+'77');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(0,0);
+  ctx.bezierCurveTo(-w*0.8,-len*0.25,-w,-len*0.65,0,-len);
+  ctx.bezierCurveTo( w,    -len*0.65, w*0.8,-len*0.25,0,0);
+  ctx.closePath();
+  ctx.fill();
+  // vena central — solo en desktop (caro en móvil)
+  if(!IS_MOBILE){
+    ctx.strokeStyle = c2+'22'; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(0,-2); ctx.lineTo(0,-len*0.85); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* ─── ROSE ────────────────────────────────────────────────── */
+class Rose {
+  constructor(o){
+    this.x=o.x; this.baseY=o.baseY;
+    this.stemH=o.stemH||200; this.phase=o.phase||0;
+    this.sc=o.sc||1; this.lean=o.lean||0; this.col=o.col;
+    this.bloom=0; this.target=0;
+  }
+  sway(){ return Math.sin(t*0.65+this.phase)*5*this.sc + Math.sin(t*1.1+this.phase*0.7)*2*this.sc; }
+
+  drawStem(){
+    const sw=this.sway();
+    const tx=this.x+sw+this.lean*this.stemH*0.45;
+    const ty=this.baseY-this.stemH;
+    // gradiente del tallo — cacheado implícitamente por el objeto (no recrea cada frame innecesariamente)
+    const g=ctx.createLinearGradient(this.x,this.baseY,tx,ty);
+    g.addColorStop(0,'#1a3a18'); g.addColorStop(1,'#3a8032');
+    ctx.strokeStyle=g; ctx.lineWidth=2.8*this.sc; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(this.x,this.baseY);
+    ctx.bezierCurveTo(
+      lerp(this.x,tx,0.3)+this.lean*15, lerp(this.baseY,ty,0.3),
+      lerp(this.x,tx,0.7)+this.lean*8,  lerp(this.baseY,ty,0.7),
+      tx,ty
+    );
+    ctx.stroke();
+    return {tx,ty};
+  }
+
+  drawLeaf(px,py,dir,size){
+    ctx.save(); ctx.translate(px,py); ctx.rotate(dir*(Math.PI/4+0.3));
+    const g=ctx.createLinearGradient(0,0,size*dir,-size*0.6);
+    g.addColorStop(0,'#2d5a27'); g.addColorStop(0.5,'#4c8c40'); g.addColorStop(1,'#2d5a27');
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.bezierCurveTo(size*0.25*dir,-size*0.7,size*0.85*dir,-size*0.55,size*dir,0);
+    ctx.bezierCurveTo(size*0.85*dir,size*0.28,size*0.25*dir,size*0.12,0,0);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  drawFlower(cx,cy){
+    const b=this.bloom, s=this.sc;
+    const {outer,mid,inner,core}=this.col;
+
+    // sépalos (solo en desktop)
+    if(!IS_MOBILE){
+      for(let i=0;i<5;i++){
+        const a=(Math.PI*2/5)*i-Math.PI/2;
+        ctx.save(); ctx.translate(cx,cy); ctx.rotate(a);
+        ctx.fillStyle='#2d5a2788';
+        ctx.beginPath();
+        ctx.ellipse(0,-9*s*(1-b*0.4),3.2*s,10*s*(1-b*0.35),0,0,Math.PI*2);
+        ctx.fill(); ctx.restore();
+      }
+    }
+
+    // pétalos exteriores
+    const oN = Math.round(7 * PETAL_REDUCE);
+    for(let i=0;i<oN;i++){
+      const a=(Math.PI*2/oN)*i+t*0.015+this.phase*0.1;
+      drawPetal(cx,cy,a,lerp(16,38,b)*s,lerp(7,16,b)*s,outer,mid,0.95);
+    }
+    // pétalos medios
+    const mN = Math.round(9 * PETAL_REDUCE);
+    for(let i=0;i<mN;i++){
+      const a=(Math.PI*2/mN)*i+Math.PI/mN*0.6+t*0.015+this.phase*0.1;
+      drawPetal(cx,cy,a,lerp(11,27,b)*s,lerp(5,11,b)*s,mid,inner,0.92);
+    }
+    // pétalos interiores
+    const iN = IS_MOBILE ? 0 : Math.round(11 * PETAL_REDUCE); // en móvil se omiten — ya hay suficiente detalle
+    for(let i=0;i<iN;i++){
+      const a=(Math.PI*2/iN)*i+t*0.015+this.phase*0.1;
+      drawPetal(cx,cy,a,lerp(6,18,b)*s,lerp(3,8,b)*s,inner,core,0.88);
+    }
+
+    // centro
+    const cr=lerp(3.5,7,b)*s;
+    const cg=ctx.createRadialGradient(cx-cr*0.2,cy-cr*0.2,0,cx,cy,cr*2.2);
+    cg.addColorStop(0,core); cg.addColorStop(0.5,inner); cg.addColorStop(1,mid);
+    ctx.beginPath(); ctx.arc(cx,cy,cr*1.3,0,Math.PI*2); ctx.fillStyle=cg; ctx.fill();
+    // destello
+    ctx.fillStyle='rgba(255,225,235,0.4)';
+    ctx.beginPath(); ctx.arc(cx-cr*0.35,cy-cr*0.35,cr*0.38,0,Math.PI*2); ctx.fill();
+  }
+
+  draw(){
+    this.bloom += (this.target-this.bloom)*0.014;
+    const {tx,ty}=this.drawStem();
+    const sw=this.sway();
+    const mx=lerp(this.x,tx,0.45)+sw*0.2;
+    const my=lerp(this.baseY,ty,0.45);
+    this.drawLeaf(mx,my,1,20*this.sc);
+    this.drawLeaf(mx+sw*0.15,my+16*this.sc,-1,16*this.sc);
+    this.drawFlower(tx,ty);
+  }
+}
+
+/* ─── GYPSOPHILA ──────────────────────────────────────────── */
+class Gyp {
+  constructor(x,by,lean){
+    this.x=x; this.by=by; this.lean=lean||0;
+    this.phase=Math.random()*Math.PI*2;
+    const count = IS_MOBILE ? 14 : 24;
+    this.br=[];
+    for(let i=0;i<count;i++){
+      const base=(Math.random()-0.5)*Math.PI*1.5-Math.PI/2;
+      this.br.push({
+        a:base+this.lean*0.4,
+        len:24+Math.random()*42,
+        ph:Math.random()*Math.PI*2,
+        sz:1.1+Math.random()*2.2
+      });
+    }
+  }
+  draw(){
+    const sw=Math.sin(t*0.6+this.phase)*3;
+    const stemH=105;
+    const tx=this.x+sw+this.lean*stemH*0.55;
+    const ty=this.by-stemH;
+    ctx.strokeStyle='#4a7a4455'; ctx.lineWidth=1.4; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(this.x,this.by);
+    ctx.quadraticCurveTo(this.x+this.lean*stemH*0.3+sw*0.4,this.by-stemH*0.55,tx,ty);
+    ctx.stroke();
+    this.br.forEach(b=>{
+      const bx=tx+Math.cos(b.a)*b.len+Math.sin(t*0.45+b.ph)*1.2;
+      const by_=ty+Math.sin(b.a)*b.len;
+      // florcita con gradiente radial simple
+      const fg=ctx.createRadialGradient(bx,by_,0,bx,by_,b.sz*2.0);
+      fg.addColorStop(0,'rgba(255,245,252,0.92)');
+      fg.addColorStop(0.55,'rgba(255,210,230,0.55)');
+      fg.addColorStop(1,'transparent');
+      ctx.beginPath(); ctx.arc(bx,by_,b.sz*1.8,0,Math.PI*2);
+      ctx.fillStyle=fg; ctx.fill();
+    });
+  }
+}
+
+/* ─── WRAP (cono de papel) ────────────────────────────────── */
+function drawWrap(cx,tipY,openY,halfW){
+  ctx.save();
+  // sin shadowBlur global — simulamos profundidad con gradientes laterales
+
+  const wg=ctx.createLinearGradient(cx-halfW,openY,cx+halfW*0.3,tipY);
+  wg.addColorStop(0,   '#1e0810');
+  wg.addColorStop(0.18,'#3d1028');
+  wg.addColorStop(0.35,'#2a0c1c');
+  wg.addColorStop(0.5, '#4a1530');
+  wg.addColorStop(0.68,'#2e0e20');
+  wg.addColorStop(0.85,'#3a1228');
+  wg.addColorStop(1,   '#1a0810');
+
+  function conePath(){
+    ctx.beginPath();
+    ctx.moveTo(cx-halfW,openY);
+    ctx.bezierCurveTo(cx-halfW*1.05,openY+(tipY-openY)*0.35,cx-halfW*0.25,tipY-(tipY-openY)*0.12,cx,tipY);
+    ctx.bezierCurveTo(cx+halfW*0.25,tipY-(tipY-openY)*0.12,cx+halfW*1.05,openY+(tipY-openY)*0.35,cx+halfW,openY);
+    ctx.closePath();
+  }
+  conePath(); ctx.fillStyle=wg; ctx.fill();
+
+  // sombra izquierda
+  const lf=ctx.createLinearGradient(cx-halfW*0.6,openY,cx-halfW*0.3,tipY*0.6+openY*0.4);
+  lf.addColorStop(0,'rgba(180,80,120,0.0)');
+  lf.addColorStop(0.3,'rgba(180,80,120,0.16)');
+  lf.addColorStop(1,'rgba(180,80,120,0.0)');
+  ctx.fillStyle=lf;
+  ctx.beginPath();
+  ctx.moveTo(cx-halfW*0.62,openY);
+  ctx.bezierCurveTo(cx-halfW*0.55,openY+(tipY-openY)*0.4,cx-halfW*0.1,tipY-30,cx,tipY);
+  ctx.bezierCurveTo(cx-halfW*0.05,tipY-30,cx-halfW*0.65,openY+(tipY-openY)*0.42,cx-halfW*0.68,openY);
+  ctx.closePath(); ctx.fill();
+
+  // sombra derecha
+  const rf=ctx.createLinearGradient(cx+halfW*0.3,openY,cx+halfW*0.6,tipY*0.6+openY*0.4);
+  rf.addColorStop(0,'rgba(80,20,50,0.0)');
+  rf.addColorStop(0.3,'rgba(80,20,50,0.22)');
+  rf.addColorStop(1,'rgba(80,20,50,0.0)');
+  ctx.fillStyle=rf;
+  ctx.beginPath();
+  ctx.moveTo(cx+halfW*0.55,openY);
+  ctx.bezierCurveTo(cx+halfW*0.5,openY+(tipY-openY)*0.4,cx+halfW*0.08,tipY-30,cx,tipY);
+  ctx.bezierCurveTo(cx+halfW*0.04,tipY-30,cx+halfW*0.58,openY+(tipY-openY)*0.42,cx+halfW*0.62,openY);
+  ctx.closePath(); ctx.fill();
+
+  // puntos dorados (solo desktop)
+  if(!IS_MOBILE){
+    [[-0.62,0.12,1.4],[0.48,0.10,1.2],[-0.2,0.28,1.5],[0.32,0.35,1.1],
+     [-0.5,0.48,1.3],[0.15,0.52,1.0],[0.0,0.22,1.6],[-0.38,0.42,1.2],
+     [0.44,0.24,1.1],[0.28,0.62,1.2]].forEach(([fx,fy,sz])=>{
+      ctx.beginPath(); ctx.arc(cx+fx*halfW,openY+fy*(tipY-openY),sz,0,Math.PI*2);
+      ctx.fillStyle='rgba(212,168,83,0.16)'; ctx.fill();
+    });
+  }
+
+  // borde superior (rizado)
+  const eg=ctx.createLinearGradient(cx-halfW,openY-18,cx+halfW,openY+10);
+  eg.addColorStop(0,'#3a0e22'); eg.addColorStop(0.2,'#6a2040');
+  eg.addColorStop(0.5,'#8a2e50'); eg.addColorStop(0.75,'#5a1835');
+  eg.addColorStop(1,'#3a0e22');
+  ctx.fillStyle=eg;
+  ctx.beginPath();
+  const steps=IS_MOBILE?8:12;
+  for(let i=0;i<=steps;i++){
+    const px=cx-halfW+(halfW*2)*(i/steps);
+    const wave=(i%2===0?-1:1)*5+Math.sin(i*1.4)*3;
+    if(i===0) ctx.moveTo(px,openY+wave);
+    else ctx.lineTo(px,openY+wave);
+  }
+  ctx.lineTo(cx+halfW,openY+18);
+  ctx.ellipse(cx,openY+18,halfW,16,0,0,Math.PI);
+  ctx.closePath(); ctx.fill();
+
+  // sombra interior (apertura)
+  const ig=ctx.createLinearGradient(cx,openY,cx,openY+48);
+  ig.addColorStop(0,'rgba(0,0,0,0.6)'); ig.addColorStop(1,'transparent');
+  ctx.fillStyle=ig;
+  ctx.beginPath(); ctx.ellipse(cx,openY+18,halfW*0.86,12,0,0,Math.PI*2); ctx.fill();
+
+  // rim dorado
+  ctx.strokeStyle='rgba(212,168,83,0.32)'; ctx.lineWidth=1.1;
+  ctx.beginPath(); ctx.ellipse(cx,openY+6,halfW*0.96,9,0,Math.PI,Math.PI*2); ctx.stroke();
+
+  ctx.restore();
+}
+
+/* ─── RIBBON (lazo) ───────────────────────────────────────── */
+function drawRibbon(cx,cy,halfW){
+  const bH=30, bW=halfW*0.70;
+  ctx.save();
+
+  // colas
+  [[cx-5,cx+5,-1],[cx+5,cx-5,1]].forEach(([ax,bx,dir])=>{
+    const gr=ctx.createLinearGradient(cx,cy,cx+dir*bW*1.3,cy+60);
+    gr.addColorStop(0,'#c03858'); gr.addColorStop(0.5,'#e05878'); gr.addColorStop(1,'#8a1830');
+    ctx.fillStyle=gr;
+    ctx.beginPath(); ctx.moveTo(ax,cy+5);
+    ctx.bezierCurveTo(cx+dir*bW*0.4,cy+22,cx+dir*bW,cy+40,cx+dir*bW*1.35,cy+65);
+    ctx.bezierCurveTo(cx+dir*bW*1.45,cy+70,cx+dir*bW*1.2,cy+50,cx+dir*bW*0.6,cy+28);
+    ctx.bezierCurveTo(cx+dir*bW*0.2,cy+15,bx,cy+3,bx,cy-2);
+    ctx.closePath(); ctx.fill();
+  });
+
+  // loops
+  [-1,1].forEach(dir=>{
+    const gr=ctx.createLinearGradient(cx+dir*bW*1.1,cy-bH,cx,cy);
+    gr.addColorStop(0,'#f090b0'); gr.addColorStop(0.4,'#d04570'); gr.addColorStop(1,'#900a2e');
+    ctx.fillStyle=gr;
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.bezierCurveTo(cx+dir*bW*0.25,cy-bH*0.7,cx+dir*bW*1.05,cy-bH,cx+dir*bW,cy+bH*0.12);
+    ctx.bezierCurveTo(cx+dir*bW*0.8,cy+bH*0.45,cx+dir*bW*0.18,cy+bH*0.08,cx,cy);
+    ctx.closePath(); ctx.fill();
+  });
+
+  // nudo central
+  const kg=ctx.createRadialGradient(cx-2,cy-2,0,cx,cy,14);
+  kg.addColorStop(0,'#ffa8c8'); kg.addColorStop(0.35,'#e04872'); kg.addColorStop(1,'#8a1230');
+  ctx.fillStyle=kg;
+  ctx.beginPath(); ctx.ellipse(cx,cy+2,13,10,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,210,230,0.5)';
+  ctx.beginPath(); ctx.ellipse(cx-3,cy-1,5,3.5,-0.3,0,Math.PI*2); ctx.fill();
+
+  ctx.restore();
+}
+
+/* ─── BUILD ───────────────────────────────────────────────── */
+let roses=[], gyps=[];
+
+function build(){
+  const {cx,availH,wrapTipY,wrapHalfW,openY} = getLayout();
+  const stemBase = openY + 10;
+  const sh = f => Math.min(availH*f, availH*0.80);
+
+  const P=[
+    {outer:'#6b0820',mid:'#a82848',inner:'#d05878',core:'#ffc8d8'},
+    {outer:'#7a0a28',mid:'#b83050',inner:'#e06080',core:'#ffd0de'},
+    {outer:'#8b1232',mid:'#c03c5c',inner:'#e87090',core:'#ffe0e8'},
+    {outer:'#5a0818',mid:'#982040',inner:'#c85070',core:'#ffb8cc'},
+    {outer:'#920e30',mid:'#ca4060',inner:'#ee7a90',core:'#ffe4ec'},
+  ];
+  const sp = Math.min(wrapHalfW*0.42, 44);
+
+  roses=[
+    new Rose({x:cx-sp*1.5, baseY:stemBase, stemH:sh(0.70), phase:0.0, sc:0.82, lean:-0.28, col:P[0]}),
+    new Rose({x:cx,        baseY:stemBase, stemH:sh(0.78), phase:1.0, sc:0.92, lean: 0.0,  col:P[1]}),
+    new Rose({x:cx+sp*1.5, baseY:stemBase, stemH:sh(0.70), phase:2.0, sc:0.82, lean: 0.28, col:P[0]}),
+    new Rose({x:cx-sp*0.7, baseY:stemBase, stemH:sh(0.58), phase:0.5, sc:0.78, lean:-0.12, col:P[2]}),
+    new Rose({x:cx+sp*0.7, baseY:stemBase, stemH:sh(0.58), phase:1.8, sc:0.78, lean: 0.12, col:P[2]}),
+    new Rose({x:cx-sp*2.1, baseY:stemBase, stemH:sh(0.50), phase:0.8, sc:0.72, lean:-0.45, col:P[3]}),
+    new Rose({x:cx+sp*2.1, baseY:stemBase, stemH:sh(0.50), phase:2.5, sc:0.72, lean: 0.45, col:P[3]}),
+    new Rose({x:cx-sp*1.1, baseY:stemBase, stemH:sh(0.42), phase:1.3, sc:0.68, lean:-0.08, col:P[4]}),
+    new Rose({x:cx+sp*1.1, baseY:stemBase, stemH:sh(0.42), phase:2.8, sc:0.68, lean: 0.08, col:P[4]}),
+    new Rose({x:cx,        baseY:stemBase, stemH:sh(0.37), phase:0.2, sc:0.65, lean: 0.0,  col:P[2]}),
+  ];
+  roses.forEach((r,i)=>{ r.bloom=0; r.target=0; setTimeout(()=>{ r.target=1; },i*180+300); });
+
+  const gypCount = IS_MOBILE ? 2 : 4;
+  gyps = [
+    new Gyp(cx-sp*0.8, stemBase, -0.9),
+    new Gyp(cx+sp*0.8, stemBase,  0.9),
+    ...(gypCount>2 ? [new Gyp(cx-sp*1.6, stemBase, -1.3), new Gyp(cx+sp*1.6, stemBase, 1.3)] : [])
+  ];
+}
+build();
+
+/* ─── LOOP — throttle a 40fps en móvil ───────────────────── */
+const TARGET_MS = IS_MOBILE ? 25 : 16; // ~40fps móvil / ~60fps desktop
+let lastTime = 0;
+
+function frame(now){
+  requestAnimationFrame(frame);
+  if(now - lastTime < TARGET_MS) return;
+  lastTime = now;
+
+  const {cx,wrapTipY,wrapH,wrapHalfW,openY} = getLayout();
+
+  // fondo (opaco — alpha:false lo hace más rápido)
+  ctx.fillStyle = '#120608';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // glow ambiente (una sola vez, sin clearRect extra)
+  const sg=ctx.createRadialGradient(cx,wrapTipY-wrapH*0.4,0,cx,wrapTipY-wrapH*0.4,wrapHalfW*2.0);
+  sg.addColorStop(0,'rgba(55,5,18,0.35)'); sg.addColorStop(1,'transparent');
+  ctx.fillStyle=sg; ctx.fillRect(0,0,window.innerWidth,window.innerHeight);
+
+  t += 0.016;
+
+  gyps.forEach(g=>g.draw());
+  roses.forEach(r=>r.draw());
+  drawWrap(cx,wrapTipY,openY,wrapHalfW);
+  drawRibbon(cx, openY+(wrapTipY-openY)*0.32, wrapHalfW);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
